@@ -1,0 +1,38 @@
+version: "3.3"
+services:
+  nginx:
+    build: nginx
+    depends_on: [orthanc-public]
+    restart: always
+    ports: ["443:443"]
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:Z
+  orthanc-public:
+    image: osimis/orthanc:21.7.1
+    restart: always
+    ports: ["80:8042"]
+    volumes:
+     - orthanc-storage:/var/lib/orthanc/db:Z
+     - ./lua:/lua
+    environment:
+      ORTHANC__NAME: "ORTHANC"
+      ORTHANC__REGISTERED_USERS: |
+       {"chris": "demo"}
+      # you must enable the StoneViewer and the DicomWeb plugins
+      STONE_WEB_VIEWER_PLUGIN_ENABLED: "true"
+      ORTHANC__DICOM_SERVER_ENABELD: "false"
+      ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
+      ORTHANC__WEB_DAV_ENABLED: "false"
+      ORTHANC__AUTHENTICATION_ENABLED: "false"
+      ORTHANC__LUA_SCRIPTS:  |
+        [
+          "/lua/access_control.lua"
+        ]
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      # StoneViewer configurations
+      ORTHANC__STONE_WEB_VIEWER__DATE_FORMAT: "DD/MM/YYYY"
+      WSI_PLUGIN_ENABLED: "false"
+
+volumes:
+  letsencrypt:
+  orthanc-storage:
