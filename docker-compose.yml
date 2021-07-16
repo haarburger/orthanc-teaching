@@ -2,20 +2,20 @@ version: "3.3"
 services:
   nginx:
     build: nginx
-    depends_on: [orthanc-public]
+    depends_on: [orthanc-public, orthanc-private]
     restart: always
     ports: ["443:443"]
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:Z
   orthanc-public:
     image: osimis/orthanc:21.7.1
+    depends_on: [index]
     restart: always
     ports: ["80:8042"]
-    volumes:
-     - orthanc-storage:/var/lib/orthanc/db:Z
-     - ./lua:/lua
+    volumes: ["storage:/var/lib/orthanc/db:Z", "./lua:/lua"]
     environment:
-      ORTHANC__NAME: "ORTHANC"
+      ORTHANC__NAME: "ORTHANC-PUBLIC"
+      ORTHANC__POSTGRESQL__HOST: "index"
       ORTHANC__REGISTERED_USERS: |
        {"chris": "demo"}
       # you must enable the StoneViewer and the DicomWeb plugins
@@ -33,6 +33,40 @@ services:
       ORTHANC__STONE_WEB_VIEWER__DATE_FORMAT: "DD/MM/YYYY"
       WSI_PLUGIN_ENABLED: "false"
 
+  orthanc-private:
+    image: osimis/orthanc:21.7.1
+    depends_on: [index]
+    restart: always
+    ports: ["8080:8042"]
+    volumes: ["storage:/var/lib/orthanc/db:Z"]
+    environment:
+      ORTHANC__NAME: "ORTHANC-PRIVATE"
+      ORTHANC__POSTGRESQL__HOST: "index"
+      ORTHANC__REGISTERED_USERS: |
+        {"demo": "demo"}
+      # you must enable the StoneViewer and the DicomWeb plugins
+      STONE_WEB_VIEWER_PLUGIN_ENABLED: "true"
+      ORTHANC__DICOM_SERVER_ENABELD: "false"
+      ORTHANC__REMOTE_ACCESS_ALLOWED: "true"
+      ORTHANC__WEB_DAV_ENABLED: "false"
+      ORTHANC__AUTHENTICATION_ENABLED: "true"
+      DICOM_WEB_PLUGIN_ENABLED: "true"
+      # StoneViewer configurations
+      ORTHANC__STONE_WEB_VIEWER__DATE_FORMAT: "DD/MM/YYYY"
+      WSI_PLUGIN_ENABLED: "false"
+
+  index:
+    image: postgres
+    volumes: ["index:/var/lib/postgresql/data:Z"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_USERNAME: "postgres"
+      POSTGRES_DATABASE: "postgres"
+      POSTGRES_HOST_AUTH_METHOD: "trust"
+
+
 volumes:
   letsencrypt:
-  orthanc-storage:
+  storage:
+  index:
